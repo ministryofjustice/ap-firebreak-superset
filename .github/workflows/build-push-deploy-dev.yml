@@ -87,6 +87,8 @@ jobs:
           RELEASE_NAME: ${{ github.event.repository.name }}
 
         run: |
-          helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $RELEASE_NAME http://apache.github.io/superset/ \
+          pwd \
+          && ls -lathrR \
+          && helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $RELEASE_NAME http://apache.github.io/superset/ \
           --set Namespace=$KUBE_NAMESPACE \
           -f ./helm_deploy/ap-firebreak-superset/values.yaml
