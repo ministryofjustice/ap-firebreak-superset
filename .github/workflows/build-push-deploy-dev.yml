@@ -41,10 +41,8 @@ jobs:
           id: write-values-to-env
           shell: bash
           run: |
-            pwd 
-            ls -lathrR
             echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
-            cat ./helm_deploy/ap-firebreak-superser/values.yaml >> $GITHUB_ENV
+            cat ./helm_deploy/ap-firebreak-superset/values.yaml >> $GITHUB_ENV
             echo 'EOF' >> $GITHUB_ENV
 
         - name: Deploy image to K8 cloud-platform-go-get-module namespace
