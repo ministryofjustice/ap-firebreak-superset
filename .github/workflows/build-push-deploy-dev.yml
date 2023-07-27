@@ -27,7 +27,7 @@ jobs:
           run: |
             echo "${{ secrets.KUBE_CERT }}" > ca.crt
             
-            kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=ca.crt --server="${KUBE_CLUSTER}"
+            kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=ca.crt --server=https://${KUBE_CLUSTER}
             kubectl config set-credentials deploy-user --token=${KUBE_TOKEN}
             kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace=${KUBE_NAMESPACE}
             kubectl config use-context "${KUBE_CLUSTER}"
@@ -37,13 +37,14 @@ jobs:
             kubectl config view --flatten >> $GITHUB_ENV
             echo 'EOF' >> $GITHUB_ENV
           
-        # - name: Write values.yaml to env
-        #   id: write-values-to-env
-        #   shell: bash
-        #   run: |
-        #     echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
-        #     cat ./helm_deploy/${{ github.event.repository.name }}/values.yaml >> $GITHUB_ENV
-        #     echo 'EOF' >> $GITHUB_ENV
+        - name: Write values.yaml to env
+          id: write-values-to-env
+          shell: bash
+          run: |
+            echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
+            cat ./helm_deploy/${{ github.event.repository.name }}/values.yaml >> $GITHUB_ENV
+            echo 'EOF' >> $GITHUB_ENV
+            echo $GITHUB_ENV
 
         - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
           id: deploy-image
