@@ -10,25 +10,25 @@ permissions: {}
 concurrency: dev
 
 jobs:
-  release-helm-chart:
-    name: Build & Push New Image
-    runs-on: ubuntu-latest
-    permissions:
-    #   id-token: write # This is required for requesting the JWT
-      contents: write # This is required for actions/checkout
-    environment: dev
-    # outputs:
-    #   new_tag: ${{ steps.set-version-tag-output.outputs.new_tag }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+#   release-helm-chart:
+#     name: Build & Push New Image
+#     runs-on: ubuntu-latest
+#     permissions:
+#     #   id-token: write # This is required for requesting the JWT
+#       contents: write # This is required for actions/checkout
+#     environment: dev
+#     # outputs:
+#     #   new_tag: ${{ steps.set-version-tag-output.outputs.new_tag }}
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
+#         with:
+#           fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+#       - name: Configure Git
+#         run: |
+#           git config user.name "$GITHUB_ACTOR"
+#           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
     #   - name: Bump version and push tag
     #     uses: anothrNick/github-tag-action@1.62.0
@@ -44,12 +44,12 @@ jobs:
     #     id: set-version-tag-output
     #     run: echo "new_tag=${{ steps.bump-id.outputs.new_tag }}" >> $GITHUB_OUTPUT
 
-      - name: Helm Chart Releaser
-        uses: helm/chart-releaser-action@v1.5.0
-        with:
-          charts_dir: helm_deploy/ap-firebreak-superset/charts
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    #   - name: Helm Chart Releaser
+    #     uses: helm/chart-releaser-action@v1.5.0
+    #     with:
+    #       charts_dir: helm_deploy/ap-firebreak-superset/charts
+    #     env:
+    #       CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
   deploy-dev:
     if: github.event_name == 'pull_request'
@@ -70,11 +70,16 @@ jobs:
           kubectl config set-credentials deploy-user --token=${{ secrets.KUBE_TOKEN }}
           kubectl config set-context ${KUBE_CLUSTER} --cluster=${KUBE_CLUSTER} --user=deploy-user --namespace=${{ secrets.KUBE_NAMESPACE }}
           kubectl config use-context ${KUBE_CLUSTER}
-        
-    #   - name: update helm repo
-    #     continue-on-error: true
-    #     run: |
-    #       helm repo update ap-firebreak-superset
+
+      - name: add helm repo
+        continue-on-error: true
+        run: |
+          helm repo add superset http://apache.github.io/superset/
+
+      - name: update helm repo
+        continue-on-error: true
+        run: |
+          helm repo update superset
 
       - name: Upgrade the Helm chart
         env:
@@ -84,5 +89,6 @@ jobs:
           RELEASE_NAME: ${{ github.event.repository.name }}-dev
 
         run: |
-          helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $RELEASE_NAME ./helm_deploy/ap-firebreak-superset \
-          --set Namespace=$KUBE_NAMESPACE
+          helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $RELEASE_NAME superset \
+          --set Namespace=$KUBE_NAMESPACE \
+          -f helm_deploy/ap-firebreak-superset/values.yaml
