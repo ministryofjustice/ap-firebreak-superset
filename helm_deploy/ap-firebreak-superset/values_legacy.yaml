@@ -15,9 +15,21 @@
 # limitations under the License.
 #
 
+# Default values for superset.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# A README is automatically generated from this file to document it, using helm-docs (see https://github.com/norwoodj/helm-docs)
+# To update it, install helm-docs and run helm-docs from the root of this chart
+
+# -- Provide a name to override the name of the chart
+nameOverride: ~
+# -- Provide a name to override the full names of resources
+fullnameOverride: ~
+
 # -- User ID directive. This user must have enough permissions to run the bootstrap script
 # Running containers as root is not recommended in production. Change this to another UID - e.g. 1000 to be more secure
-runAsUser: 31337
+runAsUser: 0
 
 # -- Specify service account name to be used
 serviceAccountName: ~
@@ -31,9 +43,7 @@ serviceAccount:
 # @default -- see `values.yaml`
 bootstrapScript: |
   #!/bin/bash
-  pip install pyathena[pandas] \
-    PyAthenaJDBC \
-  && if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
+  if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
 
 # -- The name of the secret which we will use to generate a superset_config.py file
 # Note: this secret must have the key superset_config.py in it and can include other files as well
@@ -166,7 +176,7 @@ configMountPath: "/app/pythonpath"
 extraConfigMountPath: "/app/configs"
 
 image:
-  repository: apache/superset
+  repository: apachesuperset.docker.scarf.sh/apache/superset
   tag: ""
   pullPolicy: IfNotPresent
 
