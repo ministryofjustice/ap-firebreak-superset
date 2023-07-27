@@ -46,6 +46,12 @@ jobs:
             echo 'EOF' >> $GITHUB_ENV
             echo $GITHUB_ENV
 
+        - name: add helm repo
+          id: helm-repo-add
+          shell: bash
+          run: |
+            helm repo add https://charts.bitnami.com/bitnami
+
         - name: build helm dependencies
           id: build-helm-deps
           shell: bash
