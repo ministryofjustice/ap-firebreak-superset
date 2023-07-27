@@ -16,19 +16,20 @@ jobs:
     steps:
         - name: Checkout
           uses: actions/checkout@v3
-
-        - name: Create cert certificate-authority
-          id: create-cert-authority
-          shell: bash
-          run: echo "${{ secrets.KUBE_CERT }}" > ca.crt
           
         - name: Authenticate to the cluster
           shell: bash
           id: authenticate
+          env:
+            KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+            KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+            KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
           run: |
+            echo "${{ secrets.KUBE_CERT }}" > ca.crt
+            
             kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=ca.crt --server="${KUBE_CLUSTER}"
-            kubectl config set-credentials deploy-user --token="${{ secrets.KUBE_TOKEN }}"
-            kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${{ secrets.KUBE_NAMESPACE }}"
+            kubectl config set-credentials deploy-user --token=${KUBE_TOKEN}
+            kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace=${KUBE_NAMESPACE}
             kubectl config use-context "${KUBE_CLUSTER}"
             
             # export flat kube config so helm image can read it
