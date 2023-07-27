@@ -37,21 +37,22 @@ jobs:
             kubectl config view --flatten >> $GITHUB_ENV
             echo 'EOF' >> $GITHUB_ENV
           
-        - name: Write values.yaml to env
-          id: write-values-to-env
-          shell: bash
-          run: |
-            echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
-            cat ./helm_deploy/ap-firebreak-superset/values.yaml >> $GITHUB_ENV
-            echo 'EOF' >> $GITHUB_ENV
+        # - name: Write values.yaml to env
+        #   id: write-values-to-env
+        #   shell: bash
+        #   run: |
+        #     echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
+        #     cat ./helm_deploy/${{ github.event.repository.name }}/values.yaml >> $GITHUB_ENV
+        #     echo 'EOF' >> $GITHUB_ENV
 
-        - name: Deploy image to K8 cloud-platform-go-get-module namespace
+        - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
           id: deploy-image
           uses: vimeda/helm@v1.7.0
           with:
-            release: go-get-module
+            release: ${{ github.event.repository.name }}
+            chart: "helm_deploy/${{ github.event.repository.name }}"
             namespace: ${{ secrets.KUBE_NAMESPACE }}
-            chart: deploy
-            values: ${{ env.VALUES_YAML }}
+            # values: ${{ env.VALUES_YAML }}
+            # value-files: "helm_deploy/${{ github.event.repository.name }}/values.yaml"
           env:
             KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
