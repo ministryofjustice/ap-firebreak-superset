@@ -10,85 +10,47 @@ permissions: {}
 concurrency: dev
 
 jobs:
-#   release-helm-chart:
-#     name: Build & Push New Image
-#     runs-on: ubuntu-latest
-#     permissions:
-#     #   id-token: write # This is required for requesting the JWT
-#       contents: write # This is required for actions/checkout
-#     environment: dev
-#     # outputs:
-#     #   new_tag: ${{ steps.set-version-tag-output.outputs.new_tag }}
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v3
-#         with:
-#           fetch-depth: 0
-
-#       - name: Configure Git
-#         run: |
-#           git config user.name "$GITHUB_ACTOR"
-#           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-    #   - name: Bump version and push tag
-    #     uses: anothrNick/github-tag-action@1.62.0
-    #     id: bump-id
-    #     env:
-    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #       WITH_V: true
-    #       DEFAULT_BUMP: patch
-    #       PRERELEASE: true
-    #       PRERELEASE_SUFFIX: dev
-
-    #   - name: Set Version tag output
-    #     id: set-version-tag-output
-    #     run: echo "new_tag=${{ steps.bump-id.outputs.new_tag }}" >> $GITHUB_OUTPUT
-
-    #   - name: Helm Chart Releaser
-    #     uses: helm/chart-releaser-action@v1.5.0
-    #     with:
-    #       charts_dir: helm_deploy/ap-firebreak-superset/charts
-    #     env:
-    #       CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-
-  deploy-dev:
-    if: github.event_name == 'pull_request'
-    name: Deploy Helm Chart into Cloud Platform
+  deploy:
     runs-on: ubuntu-latest
-    # permissions:
-    #   contents: write # This is required for actions/checkout
-    #   id-token: write # This is required for requesting the JWT
     environment: dev
     steps:
-      - name: Authenticate to the cluster
-        env:
-          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-          KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
-        run: |
-          echo "${{ secrets.KUBE_CERT }}" > ca.crt
-          kubectl config set-cluster ${KUBE_CLUSTER} --certificate-authority=./ca.crt --server=https://${KUBE_CLUSTER}
-          kubectl config set-credentials deploy-user --token=${{ secrets.KUBE_TOKEN }}
-          kubectl config set-context ${KUBE_CLUSTER} --cluster=${KUBE_CLUSTER} --user=deploy-user --namespace=${{ secrets.KUBE_NAMESPACE }}
-          kubectl config use-context ${KUBE_CLUSTER}
+        - name: Checkout
+          uses: actions/checkout@v3
 
-      - name: add helm repo
-        continue-on-error: true
-        run: |
-          helm repo add superset http://apache.github.io/superset/
+        - name: Create cert certificate-authority
+          id: create-cert-authority
+          shell: bash
+          run: echo "${{ secrets.KUBE_CERT }}" > ca.crt
+          
+        - name: Authenticate to the cluster
+          shell: bash
+          id: authenticate
+          run: |
+            kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=ca.crt --server="${KUBE_CLUSTER}"
+            kubectl config set-credentials deploy-user --token="${{ secrets.KUBE_TOKEN }}"
+            kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${{ secrets.KUBE_NAMESPACE }}"
+            kubectl config use-context "${KUBE_CLUSTER}"
+            
+            # export flat kube config so helm image can read it
+            echo 'FLAT_KUBE_CONFIG<<EOF' >> $GITHUB_ENV
+            kubectl config view --flatten >> $GITHUB_ENV
+            echo 'EOF' >> $GITHUB_ENV
+          
+        - name: Write values.yaml to env
+          id: write-values-to-env
+          shell: bash
+          run: |
+            echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
+            cat ./helm_deploy/ap-firebreak-superser/values.yaml >> $GITHUB_ENV
+            echo 'EOF' >> $GITHUB_ENV
 
-      - name: update helm repo
-        continue-on-error: true
-        run: |
-          helm repo update superset
-
-      - name: Upgrade the Helm chart
-        env:
-          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-          RELEASE_NAME: ${{ github.event.repository.name }}
-
-        run: |
-          pwd \
-          && ls -lathrR \
-          && helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $RELEASE_NAME http://apache.github.io/superset/ \
-          --set Namespace=$KUBE_NAMESPACE \
-          -f ./helm_deploy/ap-firebreak-superset/values.yaml
+        - name: Deploy image to K8 cloud-platform-go-get-module namespace
+          id: deploy-image
+          uses: vimeda/helm@v1.7.0
+          with:
+            release: go-get-module
+            namespace: ${{ secrets.KUBE_NAMESPACE }}
+            chart: deploy
+            values: ${{ env.VALUES_YAML }}
+          env:
+            KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
