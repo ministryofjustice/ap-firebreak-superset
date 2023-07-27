@@ -71,10 +71,10 @@ jobs:
           kubectl config set-context ${KUBE_CLUSTER} --cluster=${KUBE_CLUSTER} --user=deploy-user --namespace=${{ secrets.KUBE_NAMESPACE }}
           kubectl config use-context ${KUBE_CLUSTER}
         
-      - name: update helm repo
-        continue-on-error: true
-        run: |
-          helm repo update ap-firebreak-superset
+    #   - name: update helm repo
+    #     continue-on-error: true
+    #     run: |
+    #       helm repo update ap-firebreak-superset
 
       - name: Upgrade the Helm chart
         env:
