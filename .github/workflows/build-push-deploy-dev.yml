@@ -10,15 +10,15 @@ permissions: {}
 concurrency: dev
 
 jobs:
-  build-push-dev:
+  release-helm-chart:
     name: Build & Push New Image
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # This is required for requesting the JWT
+    #   id-token: write # This is required for requesting the JWT
       contents: write # This is required for actions/checkout
     environment: dev
-    outputs:
-      new_tag: ${{ steps.set-version-tag-output.outputs.new_tag }}
+    # outputs:
+    #   new_tag: ${{ steps.set-version-tag-output.outputs.new_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -30,27 +30,34 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.62.0
-        id: bump-id
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
-          DEFAULT_BUMP: patch
-          PRERELEASE: true
-          PRERELEASE_SUFFIX: dev
+    #   - name: Bump version and push tag
+    #     uses: anothrNick/github-tag-action@1.62.0
+    #     id: bump-id
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #       WITH_V: true
+    #       DEFAULT_BUMP: patch
+    #       PRERELEASE: true
+    #       PRERELEASE_SUFFIX: dev
 
-      - name: Set Version tag output
-        id: set-version-tag-output
-        run: echo "new_tag=${{ steps.bump-id.outputs.new_tag }}" >> $GITHUB_OUTPUT
+    #   - name: Set Version tag output
+    #     id: set-version-tag-output
+    #     run: echo "new_tag=${{ steps.bump-id.outputs.new_tag }}" >> $GITHUB_OUTPUT
+
+      - name: Helm Chart Releaser
+        uses: helm/chart-releaser-action@v1.5.0
+        with:
+          charts_dir: helm_deploy/ap-firebreak/superset/charts
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
   deploy-dev:
     if: github.event_name == 'pull_request'
     name: Deploy Helm Chart into Cloud Platform
     runs-on: ubuntu-latest
     permissions:
-      contents: write # This is required for actions/checkout
-      id-token: write # This is required for requesting the JWT
+    #   contents: write # This is required for actions/checkout
+    #   id-token: write # This is required for requesting the JWT
     environment: dev
     steps:
       - name: Authenticate to the cluster
@@ -63,13 +70,6 @@ jobs:
           kubectl config set-credentials deploy-user --token=${{ secrets.KUBE_TOKEN }}
           kubectl config set-context ${KUBE_CLUSTER} --cluster=${KUBE_CLUSTER} --user=deploy-user --namespace=${{ secrets.KUBE_NAMESPACE }}
           kubectl config use-context ${KUBE_CLUSTER}
-
-      - name: Helm Chart Releaser
-        uses: helm/chart-releaser-action@v1.5.0
-        with:
-          charts_dir: helm_deploy/ap-firebreak/superset/charts
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         
       - name: update helm repo
         continue-on-error: true
