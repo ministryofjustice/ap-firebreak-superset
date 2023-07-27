@@ -46,6 +46,13 @@ jobs:
             echo 'EOF' >> $GITHUB_ENV
             echo $GITHUB_ENV
 
+        - name: build helm dependencies
+          id: build-helm-deps
+          shell: bash
+          run: |
+            cd helm_deploy/${{ github.event.repository.name }}
+            helm dependency build
+
         - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
           id: deploy-image
           uses: vimeda/helm@v1.7.0
