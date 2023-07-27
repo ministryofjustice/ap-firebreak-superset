@@ -47,7 +47,7 @@ jobs:
       - name: Helm Chart Releaser
         uses: helm/chart-releaser-action@v1.5.0
         with:
-          charts_dir: helm_deploy/ap-firebreak/superset/charts
+          charts_dir: helm_deploy/ap-firebreak-superset/charts
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
@@ -84,5 +84,5 @@ jobs:
           RELEASE_NAME: ${{ github.event.repository.name }}-dev
 
         run: |
-          helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $RELEASE_NAME ./ap-firebreak-superset \
+          helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $RELEASE_NAME ./helm_deploy/ap-firebreak-superset \
           --set Namespace=$KUBE_NAMESPACE
