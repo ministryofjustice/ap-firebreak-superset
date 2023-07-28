@@ -49,7 +49,7 @@ spec:
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ . }}
-      https:
+      http:
         paths:
           - path: {{ $.Values.ingress.path }}
             pathType: {{ $.Values.ingress.pathType }}
@@ -57,7 +57,7 @@ spec:
               service:
                 name: {{ $fullName }}
                 port:
-                  name: https
+                  name: http
           {{- if $.Values.supersetWebsockets.enabled }}
           - path: {{ $.Values.supersetWebsockets.ingress.path }}
             pathType: {{ $.Values.supersetWebsockets.ingress.pathType }}
