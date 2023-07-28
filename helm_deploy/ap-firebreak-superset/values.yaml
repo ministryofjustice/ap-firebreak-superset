@@ -218,7 +218,6 @@ ingress:
   pathType: ImplementationSpecific
   hosts:
     - host: ap-firebreak-superset.apps.live.cloud-platform.service.justice.gov.uk
-    - paths: []
   tls: []
   extraHostsRaw: []
   #  - secretName: chart-example-tls
