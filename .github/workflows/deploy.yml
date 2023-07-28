@@ -67,6 +67,6 @@ jobs:
             chart: "helm_deploy/${{ github.event.repository.name }}"
             namespace: ${{ secrets.KUBE_NAMESPACE }}
             values: ${{ env.VALUES_YAML }}
-            # value-files: "helm_deploy/${{ github.event.repository.name }}/values.yaml"
+            # secrets: JSON encoded map
           env:
             KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
