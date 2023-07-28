@@ -127,7 +127,12 @@ extraVolumeMounts:
 # WARNING: the order is not guaranteed
 # Files can be passed as helm --set-file configOverrides.my-override=my-file.py
 configOverrides:
-  {}
+    my_override: |
+      # This will make sure the redirect_uri is properly computed, even with SSL offloading
+      ENABLE_PROXY_FIX = True
+      FEATURE_FLAGS = {
+          "DYNAMIC_PLUGINS": True
+      }
   # extend_timeout: |
   #    # Extend timeout to allow long running queries.
   #    SUPERSET_WEBSERVER_TIMEOUT = ...
@@ -200,7 +205,9 @@ ingress:
   enabled: true
   ingressClassName: ~
   annotations:
-    {}
+    # kubernetes.io/ingress.class: alb
+    # alb.ingress.kubernetes.io/scheme: internet-facing
+    # alb.ingress.kubernetes.io/target-type: instance{}
     # kubernetes.io/tls-acme: "true"
     ## Extend timeout to allow long running queries.
     # nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
@@ -208,7 +215,8 @@ ingress:
     # nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
   path: /
   pathType: ImplementationSpecific
-  hosts: []
+  hosts: 
+    - chart-example.local
   tls: []
   extraHostsRaw: []
   #  - secretName: chart-example-tls
