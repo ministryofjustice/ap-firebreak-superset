@@ -15,21 +15,9 @@
 # limitations under the License.
 #
 
-# Default values for superset.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-# A README is automatically generated from this file to document it, using helm-docs (see https://github.com/norwoodj/helm-docs)
-# To update it, install helm-docs and run helm-docs from the root of this chart
-
-# -- Provide a name to override the name of the chart
-nameOverride: ~
-# -- Provide a name to override the full names of resources
-fullnameOverride: ~
-
 # -- User ID directive. This user must have enough permissions to run the bootstrap script
 # Running containers as root is not recommended in production. Change this to another UID - e.g. 1000 to be more secure
-runAsUser: 0
+runAsUser: 31337
 
 # -- Specify service account name to be used
 serviceAccountName: ~
@@ -43,7 +31,9 @@ serviceAccount:
 # @default -- see `values.yaml`
 bootstrapScript: |
   #!/bin/bash
-  if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
+  pip install pyathena[pandas] \
+    PyAthenaJDBC \
+  && if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
 
 # -- The name of the secret which we will use to generate a superset_config.py file
 # Note: this secret must have the key superset_config.py in it and can include other files as well
@@ -56,7 +46,8 @@ envFromSecret: '{{ template "superset.fullname" . }}-env'
 envFromSecrets: []
 
 # -- Extra environment variables that will be passed into pods
-extraEnv: {}
+extraEnv:
+  {}
   # Different gunicorn settings, refer to the gunicorn documentation
   # https://docs.gunicorn.org/en/stable/settings.html#
   # These variables are used as Flags at the gunicorn startup
@@ -79,7 +70,8 @@ extraEnv: {}
   # OAUTH_WHITELIST_REGEX: ...
 
 # -- Extra environment variables in RAW format that will be passed into pods
-extraEnvRaw: []
+extraEnvRaw:
+  []
   # Load DB password from other secret (e.g. for zalando operator)
   # - name: DB_PASS
   #   valueFrom:
@@ -88,14 +80,16 @@ extraEnvRaw: []
   #       key: password
 
 # -- Extra environment variables to pass as secrets
-extraSecretEnv: {}
+extraSecretEnv:
+  {}
   # MAPBOX_API_KEY: ...
   # # Google API Keys: https://console.cloud.google.com/apis/credentials
   # GOOGLE_KEY: ...
   # GOOGLE_SECRET: ...
 
 # -- Extra files to mount on `/app/pythonpath`
-extraConfigs: {}
+extraConfigs:
+  {}
   # import_datasources.yaml: |
   #     databases:
   #     - allow_file_upload: true
@@ -111,7 +105,8 @@ extraConfigs: {}
 # -- Extra files to mount on `/app/pythonpath` as secrets
 extraSecrets: {}
 
-extraVolumes: []
+extraVolumes:
+  []
   # - name: customConfig
   #   configMap:
   #     name: '{{ template "superset.fullname" . }}-custom-config'
@@ -120,7 +115,8 @@ extraVolumes: []
   #     secretName: my-secret
   #     defaultMode: 0600
 
-extraVolumeMounts: []
+extraVolumeMounts:
+  []
   # - name: customConfig
   #   mountPath: /mnt/config
   #   readOnly: true
@@ -130,7 +126,13 @@ extraVolumeMounts: []
 # -- A dictionary of overrides to append at the end of superset_config.py - the name does not matter
 # WARNING: the order is not guaranteed
 # Files can be passed as helm --set-file configOverrides.my-override=my-file.py
-configOverrides: {}
+configOverrides:
+  my_override: |
+    # This will make sure the redirect_uri is properly computed, even with SSL offloading
+    ENABLE_PROXY_FIX = True
+    FEATURE_FLAGS = {
+        "DYNAMIC_PLUGINS": True
+    }
   # extend_timeout: |
   #    # Extend timeout to allow long running queries.
   #    SUPERSET_WEBSERVER_TIMEOUT = ...
@@ -167,7 +169,8 @@ configOverrides: {}
   #   SECRET_KEY = 'YOUR_OWN_RANDOM_GENERATED_SECRET_KEY'
 
 # -- Same as above but the values are files
-configOverridesFiles: {}
+configOverridesFiles:
+  {}
   # extend_timeout: extend_timeout.py
   # enable_oauth: enable_oauth.py
 
@@ -176,7 +179,7 @@ configMountPath: "/app/pythonpath"
 extraConfigMountPath: "/app/configs"
 
 image:
-  repository: apachesuperset.docker.scarf.sh/apache/superset
+  repository: apache/superset
   tag: ""
   pullPolicy: IfNotPresent
 
@@ -190,7 +193,8 @@ initImage:
 service:
   type: ClusterIP
   port: 8088
-  annotations: {}
+  annotations:
+    {}
     # cloud.google.com/load-balancer-type: "Internal"
   loadBalancerIP: ~
   nodePort:
@@ -198,10 +202,13 @@ service:
     http: nil
 
 ingress:
-  enabled: false
-  ingressClassName: ~
-  annotations: {}
-    # kubernetes.io/tls-acme: "true"
+  enabled: true
+  ingressClassName: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+    external-dns.alpha.kubernetes.io/set-identifier: ap-firebreak-superset-ap-firebreak-superset-green
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
     ## Extend timeout to allow long running queries.
     # nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
     # nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
@@ -209,14 +216,15 @@ ingress:
   path: /
   pathType: ImplementationSpecific
   hosts:
-    - chart-example.local
+    - ap-firebreak-superset.apps.live.cloud-platform.service.justice.gov.uk
   tls: []
   extraHostsRaw: []
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
 
-resources: {}
+resources:
+  {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -248,11 +256,11 @@ supersetNode:
     - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; /usr/bin/run-server.sh"
   connections:
     # -- Change in case of bringing your own redis and then also set redis.enabled:false
-    redis_host: '{{ .Release.Name }}-redis-headless'
+    redis_host: "{{ .Release.Name }}-redis-headless"
     # redis_password: superset
     redis_port: "6379"
     # You need to change below configuration incase bringing own PostgresSQL instance and also set postgresql.enabled:false
-    db_host: '{{ .Release.Name }}-postgresql'
+    db_host: "{{ .Release.Name }}-postgresql"
     db_port: "5432"
     db_user: superset
     db_pass: superset
@@ -316,7 +324,8 @@ supersetNode:
     periodSeconds: 15
     successThreshold: 1
   # -- Resource settings for the supersetNode pods - these settings overwrite might existing values from the global resources object defined above.
-  resources: {}
+  resources:
+    {}
     # limits:
     #  cpu: 100m
     #  memory: 128Mi
@@ -325,7 +334,8 @@ supersetNode:
     #  memory: 128Mi
   podSecurityContext: {}
   containerSecurityContext: {}
-  strategy: {}
+  strategy:
+    {}
     # type: RollingUpdate
     # rollingUpdate:
     #   maxSurge: 25%
@@ -370,7 +380,8 @@ supersetWorker:
   # -- Labels to be added to supersetWorker pods
   podLabels: {}
   # -- Resource settings for the supersetWorker pods - these settings overwrite might existing values from the global resources object defined above.
-  resources: {}
+  resources:
+    {}
     # limits:
     #  cpu: 100m
     #  memory: 128Mi
@@ -379,7 +390,8 @@ supersetWorker:
     #  memory: 128Mi
   podSecurityContext: {}
   containerSecurityContext: {}
-  strategy: {}
+  strategy:
+    {}
     # type: RollingUpdate
     # rollingUpdate:
     #   maxSurge: 25%
@@ -438,7 +450,8 @@ supersetCeleryBeat:
   # -- Labels to be added to supersetCeleryBeat pods
   podLabels: {}
   # -- Resource settings for the CeleryBeat pods - these settings overwrite might existing values from the global resources object defined above.
-  resources: {}
+  resources:
+    {}
     # limits:
     #  cpu: 100m
     #  memory: 128Mi
@@ -519,7 +532,8 @@ supersetCeleryFlower:
   # -- Labels to be added to supersetCeleryFlower pods
   podLabels: {}
   # -- Resource settings for the CeleryBeat pods - these settings overwrite might existing values from the global resources object defined above.
-  resources: {}
+  resources:
+    {}
     # limits:
     #  cpu: 100m
     #  memory: 128Mi
@@ -552,14 +566,7 @@ supersetWebsockets:
       "logToFile": false,
       "logFilename": "app.log",
       "statsd": { "host": "127.0.0.1", "port": 8125, "globalTags": [] },
-      "redis":
-        {
-          "port": 6379,
-          "host": "127.0.0.1",
-          "password": "",
-          "db": 0,
-          "ssl": false,
-        },
+      "redis": { "port": 6379, "host": "127.0.0.1", "password": "", "db": 0, "ssl": false },
       "redisStreamPrefix": "async-events-",
       "jwtSecret": "CHANGE-ME",
       "jwtCookieName": "async-token",
@@ -618,7 +625,8 @@ init:
   # cause the process to be killed due to OOM if it exceeds limit
   # Make sure you are giving a strong password for the admin user creation( else make sure you are changing after setup)
   # Also change the admin email to your own custom email.
-  resources: {}
+  resources:
+    {}
     # limits:
     #   cpu:
     #   memory:
@@ -635,7 +643,7 @@ init:
   jobAnnotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-delete-policy": "before-hook-creation"
-  loadExamples: false
+  loadExamples: true
   createAdmin: true
   adminUser:
     username: admin
