@@ -13,6 +13,9 @@ jobs:
   tag-build-push:
     runs-on: ubuntu-latest
     environment: dev
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: write # This is required for actions/checkout
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -86,6 +89,9 @@ jobs:
     needs: tag-build-push
     runs-on: ubuntu-latest
     environment: dev
+    permissions:
+      contents: write # This is required for actions/checkout
+      id-token: write # This is required for requesting the JWT        
     steps:
       - name: Checkout
         uses: actions/checkout@v3
