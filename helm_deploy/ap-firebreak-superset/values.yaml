@@ -31,9 +31,7 @@ serviceAccount:
 # @default -- see `values.yaml`
 bootstrapScript: |
   #!/bin/bash
-  pip install pyathena[pandas] \
-    PyAthenaJDBC \
-  && if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
+  if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
 
 # -- The name of the secret which we will use to generate a superset_config.py file
 # Note: this secret must have the key superset_config.py in it and can include other files as well
@@ -44,6 +42,14 @@ configFromSecret: '{{ template "superset.fullname" . }}-config'
 envFromSecret: '{{ template "superset.fullname" . }}-env'
 # -- This can be a list of templated strings
 envFromSecrets: []
+# -- Added for handling Kubernetes secrets a la https://user-guide.cloud-platform.service.justice.gov.uk/documentation/deploying-an-app/add-secrets-to-deployment.html#configuring-secrets-using-aws-secrets-manager
+envKubeSecrets:
+  {
+    AZURE_CLIENT_ID: azure-client-id,
+    AZURE_SECRET: azure-secret,
+    AZURE_TENANT_ID: azure-tenant-id,
+    AZURE_APP_ID: azure-app-id,
+  }
 
 # -- Extra environment variables that will be passed into pods
 extraEnv:
@@ -136,34 +142,34 @@ configOverrides:
   # extend_timeout: |
   #    # Extend timeout to allow long running queries.
   #    SUPERSET_WEBSERVER_TIMEOUT = ...
-  # enable_oauth: |
-  #   from flask_appbuilder.security.manager import (AUTH_DB, AUTH_OAUTH)
-  #   AUTH_TYPE = AUTH_OAUTH
-  #   OAUTH_PROVIDERS = [
-  #       {
-  #           "name": "google",
-  #           "whitelist": [ os.getenv("OAUTH_WHITELIST_REGEX", "") ],
-  #           "icon": "fa-google",
-  #           "token_key": "access_token",
-  #           "remote_app": {
-  #               "client_id": os.environ.get("GOOGLE_KEY"),
-  #               "client_secret": os.environ.get("GOOGLE_SECRET"),
-  #               "api_base_url": "https://www.googleapis.com/oauth2/v2/",
-  #               "client_kwargs": {"scope": "email profile"},
-  #               "request_token_url": None,
-  #               "access_token_url": "https://accounts.google.com/o/oauth2/token",
-  #               "authorize_url": "https://accounts.google.com/o/oauth2/auth",
-  #               "authorize_params": {"hd": os.getenv("OAUTH_HOME_DOMAIN", "")}
-  #           }
-  #       }
-  #   ]
-  #   # Map Authlib roles to superset roles
-  #   AUTH_ROLE_ADMIN = 'Admin'
-  #   AUTH_ROLE_PUBLIC = 'Public'
-  #   # Will allow user self registration, allowing to create Flask users from Authorized User
-  #   AUTH_USER_REGISTRATION = True
-  #   # The default user self registration role
-  #   AUTH_USER_REGISTRATION_ROLE = "Admin"
+  enable_oauth: |
+    from flask_appbuilder.security.manager import (AUTH_DB, AUTH_OAUTH)
+    AUTH_TYPE = AUTH_OAUTH
+    OAUTH_PROVIDERS = [
+      {
+          "name": "azure",
+          "icon": "fa-windows",
+          "token_key": "access_token",
+          "remote_app": {
+              "client_id": os.getenv("AZURE_APP_ID"),
+              "client_secret": os.getenv("AZURE_SECRET"),
+              "api_base_url": f"https://login.microsoftonline.com/{os.getenv('AZURE_TENANT_ID')}/oauth2",
+              "client_kwargs": {
+                  "scope": "User.read name preferred_username email profile upn groups",
+                  "resource": os.getenv("AZURE_APP_ID")
+              },
+              "request_token_url": None,
+              "access_token_url": f"https://login.microsoftonline.com/{os.getenv('AZURE_TENANT_ID')}/oauth2/token",
+              "authorize_url": f"https://login.microsoftonline.com/{os.getenv('AZURE_TENANT_ID')}/oauth2/authorize",
+          }
+      }
+    ]
+    AUTH_ROLE_ADMIN = 'Admin'
+    AUTH_ROLE_PUBLIC = 'Public'
+
+    AUTH_USER_REGISTRATION = True
+
+    AUTH_USER_REGISTRATION_ROLE = "Admin"
   # secret: |
   #   # Generate your own secret key for encryption. Use openssl rand -base64 42 to generate a good key
   #   SECRET_KEY = 'YOUR_OWN_RANDOM_GENERATED_SECRET_KEY'
@@ -179,8 +185,8 @@ configMountPath: "/app/pythonpath"
 extraConfigMountPath: "/app/configs"
 
 image:
-  repository: apache/superset
-  tag: ""
+  repository: tomwebber/ap-firebreak-superset
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

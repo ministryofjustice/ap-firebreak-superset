@@ -14,59 +14,70 @@ jobs:
     runs-on: ubuntu-latest
     environment: dev
     steps:
-        - name: Checkout
-          uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Authenticate to the cluster
+        shell: bash
+        id: authenticate
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+          KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+          KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+        run: |
+          echo "${{ secrets.KUBE_CERT }}" > ca.crt
+
+          kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=ca.crt --server=https://"${KUBE_CLUSTER}"
+          kubectl config set-credentials deploy-user --token="${KUBE_TOKEN}"
+          kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${KUBE_NAMESPACE}"
+          kubectl config use-context "${KUBE_CLUSTER}"
+
+          # export flat kube config so helm image can read it
+          echo 'FLAT_KUBE_CONFIG<<EOF' >> $GITHUB_ENV
+          kubectl config view --flatten >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+      - name: Write values.yaml to env
+        id: write-values-to-env
+        shell: bash
+        run: |
+          echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
+          cat ./helm_deploy/${{ github.event.repository.name }}/values.yaml >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+          echo $GITHUB_ENV
+
+      - name: add helm repo
+        id: helm-repo-add
+        shell: bash
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+
+      - name: build helm dependencies
+        id: build-helm-deps
+        shell: bash
+        run: |
+          cd helm_deploy/${{ github.event.repository.name }}
+          helm dependency build
+
+    #   - name: Get AWS Secrets
+    #     id: get_aws_secrets
+    #     uses: aws-actions/aws-secretsmanager-get-secrets@022e8919774ecb75e8e375656d7b1898936ab878 # v1.0.4
+    #     with:
+    #       secret-ids: |
+    #         azure_client_id
+    #         azure_secret
+    #         azure_tenant_id
+    #         azure_app_id
+
+      - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
+        id: deploy-image
+        uses: vimeda/helm@v1.7.0
+        with:
+          release: ${{ github.event.repository.name }}
+          chart: "helm_deploy/${{ github.event.repository.name }}"
+          namespace: ${{ secrets.KUBE_NAMESPACE }}
+          values: ${{ env.VALUES_YAML }}
+          # secrets: JSON encoded map
+        env:
+          KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
           
-        - name: Authenticate to the cluster
-          shell: bash
-          id: authenticate
-          env:
-            KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-            KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
-            KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
-          run: |
-            echo "${{ secrets.KUBE_CERT }}" > ca.crt
-            
-            kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=ca.crt --server=https://"${KUBE_CLUSTER}"
-            kubectl config set-credentials deploy-user --token="${KUBE_TOKEN}"
-            kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${KUBE_NAMESPACE}"
-            kubectl config use-context "${KUBE_CLUSTER}"
-            
-            # export flat kube config so helm image can read it
-            echo 'FLAT_KUBE_CONFIG<<EOF' >> $GITHUB_ENV
-            kubectl config view --flatten >> $GITHUB_ENV
-            echo 'EOF' >> $GITHUB_ENV
-          
-        - name: Write values.yaml to env
-          id: write-values-to-env
-          shell: bash
-          run: |
-            echo 'VALUES_YAML<<EOF' >> $GITHUB_ENV
-            cat ./helm_deploy/${{ github.event.repository.name }}/values.yaml >> $GITHUB_ENV
-            echo 'EOF' >> $GITHUB_ENV
-            echo $GITHUB_ENV
-
-        - name: add helm repo
-          id: helm-repo-add
-          shell: bash
-          run: |
-            helm repo add bitnami https://charts.bitnami.com/bitnami
-
-        - name: build helm dependencies
-          id: build-helm-deps
-          shell: bash
-          run: |
-            cd helm_deploy/${{ github.event.repository.name }}
-            helm dependency build
-
-        - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
-          id: deploy-image
-          uses: vimeda/helm@v1.7.0
-          with:
-            release: ${{ github.event.repository.name }}
-            chart: "helm_deploy/${{ github.event.repository.name }}"
-            namespace: ${{ secrets.KUBE_NAMESPACE }}
-            values: ${{ env.VALUES_YAML }}
-            # secrets: JSON encoded map
-          env:
-            KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
