@@ -10,12 +10,27 @@ permissions: {}
 concurrency: dev
 
 jobs:
-  tag-build-push:
+  check-for-build:
+    runs-on: ubuntu-latest
+    environment: dev
+    outputs:
+      status: ${{ steps.filter.conclusion }}
+    steps:
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            dockerfile:
+              - 'Dockerfile'
+
+  tag:
     runs-on: ubuntu-latest
     environment: dev
     permissions:
       id-token: write # This is required for requesting the JWT
       contents: write # This is required for actions/checkout
+    outputs:
+      new_tag: ${{ steps.set-version-tag-output.outputs.new_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -34,28 +49,26 @@ jobs:
         id: set-version-tag-output
         run: echo "new_tag=${{ steps.bump-id.outputs.new_tag }}" >> $GITHUB_OUTPUT
 
-    #   - name: Get file changes
-    #     id: get-file-changes
-    #     uses: trilom/file-changes-action@v1.2.3
-    #     with:
-    #       githubToken: ${{ secrets.GITHUB_TOKEN }}
-    #       plaintext: true
+      #   - name: Get file changes
+      #     id: get-file-changes
+      #     uses: trilom/file-changes-action@v1.2.3
+      #     with:
+      #       githubToken: ${{ secrets.GITHUB_TOKEN }}
+      #       plaintext: true
 
-    #   - name: Echo file changes
-    #     id: echo-file-changes
-    #     run: |
-    #       echo Changed files: ${{ steps.get-file-changes.outputs.files }}
+      #   - name: Echo file changes
+      #     id: echo-file-changes
+      #     run: |
+      #       echo Changed files: ${{ steps.get-file-changes.outputs.files }}
 
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            dockerfile:
-              - 'Dockerfile'
-
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: check-for-build
+    if: needs.check-for-build.outputs.status == 'success'
+    steps:
       - name: Build image if Dockerfile changed
         id: build-push-image
-        if: steps.filter.outputs.dockerfile == 'true'
         env:
           NEW_TAG_V: ${{ steps.set-version-tag-output.outputs.new_tag }}
         shell: bash
@@ -86,12 +99,12 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG_V
 
   deploy:
-    needs: tag-build-push
+    needs: build-and-push
     runs-on: ubuntu-latest
     environment: dev
     permissions:
       contents: write # This is required for actions/checkout
-      id-token: write # This is required for requesting the JWT        
+      id-token: write # This is required for requesting the JWT
     steps:
       - name: Checkout
         uses: actions/checkout@v3
