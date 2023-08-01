@@ -70,25 +70,22 @@ jobs:
       - name: Build image if Dockerfile changed
         id: build-push-image
         env:
-          NEW_TAG_V: ${{ steps.set-version-tag-output.outputs.new_tag }}
+          NEW_TAG_V: ${{ tag.outputs.new_tag }}
         shell: bash
         run: |
           docker build . -t working_image:$NEW_TAG_V
 
       - name: Configure AWS credentials
-        if: ${{ steps.build-push-image.outcome }} == "success"
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.DEV_ECR_ROLE_TO_ASSUME }}
           aws-region: ${{ vars.DEV_ECR_REGION }}
 
       - name: Login to Amazon ECR
-        if: ${{ steps.build-push-image.outcome }} == "success"
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Tag, and push image to Amazon ECR
-        if: ${{ steps.build-push-image.outcome }} == "success"
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ vars.DEV_ECR_REPOSITORY }}
