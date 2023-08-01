@@ -80,4 +80,4 @@ jobs:
           # secrets: JSON encoded map
         env:
           KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
-          
+
