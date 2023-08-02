@@ -179,8 +179,8 @@ configMountPath: "/app/pythonpath"
 extraConfigMountPath: "/app/configs"
 
 image:
-  repository: ${{ secrets.ECR_REPOSITORY }}
-  tag: ${{ secrets.IMAGE_TAG }}
+  repository: os.getenv("ECR_REPOSITORY")
+  tag: os.getenv("IMAGE_TAG")
   # repository: tomwebber/ap-firebreak-superset
   # tag: "latest"
   pullPolicy: IfNotPresent
