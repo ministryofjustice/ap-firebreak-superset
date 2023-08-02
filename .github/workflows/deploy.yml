@@ -65,7 +65,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     environment: dev
-    needs: check-for-build
+    needs: [check-for-build, tag]
     if: needs.check-for-build.outputs.status == 'success'
     steps:
       - name: Build image if Dockerfile changed
