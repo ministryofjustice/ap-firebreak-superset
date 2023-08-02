@@ -65,6 +65,9 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     environment: dev
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: write # This is required for actions/checkout
     needs: [check-for-build, tag]
     if: needs.check-for-build.outputs.status == 'success'
     steps:
