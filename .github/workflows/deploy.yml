@@ -180,7 +180,9 @@ jobs:
       - name: Upgrade the Helm chart
         env:
           KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+          NEW_TAG: ${{ needs.tag.outputs.new_tag }}
+          ECR_REPOSITORY: "${{ steps.login-ecr.outputs.registry }}/${{ vars.DEV_ECR_REPOSITORY }}"
         run: |
           helm upgrade --install --atomic --timeout 4m0s --namespace $KUBE_NAMESPACE $KUBE_NAMESPACE ./helm_deploy/${{ github.event.repository.name }} \
-          --set image.tag="${{ needs.tag.outputs.new_tag }}" \
-          --set image.repository="${{ steps.login-ecr.outputs.registry }}/${{ vars.DEV_ECR_REPOSITORY }}"
+          --set image.tag=$NEW_TAG \
+          --set image.repository=$ECR_REPOSITORY
