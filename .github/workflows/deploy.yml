@@ -69,8 +69,6 @@ jobs:
       contents: write # This is required for actions/checkout
     needs: [check-for-build, tag]
     if: needs.check-for-build.outputs.status == 'success'
-    outputs:
-      ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -166,11 +164,21 @@ jobs:
       #         azure_tenant_id
       #         azure_app_id
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.DEV_ECR_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.DEV_ECR_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
       - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
         id: deploy-image
         uses: vimeda/helm@v1.7.0
         env:
-          ECR_REGISTRY: ${{ needs.build-and-push.outputs.registry }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ vars.DEV_ECR_REPOSITORY }}
           NEW_TAG_V: ${{ needs.tag.outputs.new_tag }}
           KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
