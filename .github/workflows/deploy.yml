@@ -179,6 +179,6 @@ jobs:
         env:
           KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
         run: |
-          helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $KUBE_NAMESPACE ./helm_deploy/${{ github.event.repository.name }} \
+          helm upgrade --install --atomic --timeout 4m0s --namespace $KUBE_NAMESPACE $KUBE_NAMESPACE ./helm_deploy/${{ github.event.repository.name }} \
           --set image.tag="${{ needs.tag.outputs.new_tag }}" \
           --set image.repository="${{ steps.login-ecr.outputs.registry }}/${{ vars.DEV_ECR_REPOSITORY }}"
