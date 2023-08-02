@@ -41,7 +41,7 @@ configFromSecret: '{{ template "superset.fullname" . }}-config'
 # This can be useful for secret keys, etc.
 envFromSecret: '{{ template "superset.fullname" . }}-env'
 # -- This can be a list of templated strings
-envFromSecrets: []
+envFromSecrets: [ECR_REPOSITORY, IMAGE_TAG]
 # -- Added for handling Kubernetes secrets a la https://user-guide.cloud-platform.service.justice.gov.uk/documentation/deploying-an-app/add-secrets-to-deployment.html#configuring-secrets-using-aws-secrets-manager
 envKubeSecrets: { AZURE_CLIENT_ID: azure-client-id, AZURE_SECRET: azure-secret, AZURE_TENANT_ID: azure-tenant-id, AZURE_APP_ID: azure-app-id }
 
