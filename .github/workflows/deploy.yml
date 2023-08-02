@@ -186,7 +186,8 @@ jobs:
           release: ${{ github.event.repository.name }}
           chart: "helm_deploy/${{ github.event.repository.name }}"
           namespace: ${{ secrets.KUBE_NAMESPACE }}
-          values: ${{ env.VALUES_YAML }}
+        #   values: ${{ env.VALUES_YAML }}
+          value-files: "helm_deploy/${{ github.event.repository.name }}/values.yaml"
           secrets: >-
             {
               ECR_REPOSITORY: ${{ env.ECR_REPOSITORY}},
