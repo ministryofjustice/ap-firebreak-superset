@@ -175,16 +175,11 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
-        id: deploy-image
-        uses: vimeda/helm@v1.7.0
+        - name: Upgrade the Helm chart
         env:
-          KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
-        with:
-          release: ${{ github.event.repository.name }}
-          chart: "helm_deploy/${{ github.event.repository.name }}"
-          namespace: ${{ secrets.KUBE_NAMESPACE }}
-          values: |
-            image:
-              repository: "${{ steps.login-ecr.outputs.registry }}/${{ vars.DEV_ECR_REPOSITORY }}"
-              tag: ${{ needs.tag.outputs.new_tag }}
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+          NEW_TAG_V: ${{ needs.build-push-dev.outputs.new_tag }}
+        run: |
+          helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $KUBE_NAMESPACE ./helm_deploy/${{ github.event.repository.name }} \
+          --set image.tag="${{ needs.tag.outputs.new_tag }}" \
+          --set image.repository="${{ steps.login-ecr.outputs.registry }}/${{ vars.DEV_ECR_REPOSITORY }}"
