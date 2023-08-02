@@ -48,7 +48,9 @@ jobs:
 
       - name: Set Version tag output
         id: set-version-tag-output
-        run: echo "new_tag=${{ steps.bump-id.outputs.new_tag }}" >> $GITHUB_OUTPUT
+        run: |
+          NEW_TAG_V=${{ steps.bump-id.outputs.new_tag }}
+          echo "new_tag=${NEW_TAG_V#v}" >> $GITHUB_OUTPUT
 
       #   - name: Get file changes
       #     id: get-file-changes
@@ -77,10 +79,10 @@ jobs:
       - name: Build image
         id: build-push-image
         env:
-          NEW_TAG_V: ${{ needs.tag.outputs.new_tag }}
+          NEW_TAG: ${{ needs.tag.outputs.new_tag }}
         shell: bash
         run: |
-          docker build . -t working_image:$NEW_TAG_V
+          docker build . -t working_image:$NEW_TAG
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -96,11 +98,11 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ vars.DEV_ECR_REPOSITORY }}
-          NEW_TAG_V: ${{ needs.tag.outputs.new_tag }}
+          NEW_TAG: ${{ needs.tag.outputs.new_tag }}
         shell: bash
         run: |
-          docker tag working_image:$NEW_TAG_V $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG_V
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG_V
+          docker tag working_image:$NEW_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG
 
   deploy:
     needs: build-and-push
