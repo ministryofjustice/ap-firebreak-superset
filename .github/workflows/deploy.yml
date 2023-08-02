@@ -71,7 +71,7 @@ jobs:
       - name: Build image if Dockerfile changed
         id: build-push-image
         env:
-          NEW_TAG_V: ${{ tag.outputs.new_tag }}
+          NEW_TAG_V: ${{ jobs.tag.outputs.new_tag }}
         shell: bash
         run: |
           docker build . -t working_image:$NEW_TAG_V
