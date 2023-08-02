@@ -185,8 +185,8 @@ configMountPath: "/app/pythonpath"
 extraConfigMountPath: "/app/configs"
 
 image:
-  repository: ~
-  tag: ~
+  repository: ECR_REPOSITORY
+  tag: IMAGE_TAG
   # repository: tomwebber/ap-firebreak-superset
   # tag: "latest"
   pullPolicy: IfNotPresent

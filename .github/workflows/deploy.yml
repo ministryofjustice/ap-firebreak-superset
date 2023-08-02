@@ -181,6 +181,6 @@ jobs:
           values: ${{ env.VALUES_YAML }}
           secrets: >-
             {
-              "image.repository": "$ECR_REGISTRY/$ECR_REPOSITORY", 
-              "image.tag": "$NEW_TAG_V"
+              "ECR_REPOSITORY": "$ECR_REGISTRY/$ECR_REPOSITORY", 
+              "IMAGE_TAG": "$NEW_TAG_V"
             }
