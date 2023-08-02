@@ -47,8 +47,6 @@ envKubeSecrets: { AZURE_CLIENT_ID: azure-client-id, AZURE_SECRET: azure-secret, 
 
 # -- Extra environment variables that will be passed into pods
 extraEnv:
-  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  IMAGE_TAG: ${{ secrets.IMAGE_TAG }}
   # Different gunicorn settings, refer to the gunicorn documentation
   # https://docs.gunicorn.org/en/stable/settings.html#
   # These variables are used as Flags at the gunicorn startup
@@ -180,8 +178,8 @@ configMountPath: "/app/pythonpath"
 extraConfigMountPath: "/app/configs"
 
 image:
-  repository: os.getenv("ECR_REPOSITORY")
-  tag: os.getenv("IMAGE_TAG")
+  repository: ~
+  tag: ~
   # repository: tomwebber/ap-firebreak-superset
   # tag: "latest"
   pullPolicy: IfNotPresent
