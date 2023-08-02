@@ -179,9 +179,6 @@ jobs:
         id: deploy-image
         uses: vimeda/helm@v1.7.0
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.DEV_ECR_REPOSITORY }}
-          NEW_TAG_V: ${{ needs.tag.outputs.new_tag }}
           KUBECONFIG_FILE: ${{ env.FLAT_KUBE_CONFIG }}
         with:
           release: ${{ github.event.repository.name }}
@@ -190,6 +187,6 @@ jobs:
           values: ${{ env.VALUES_YAML }}
           secrets: >-
             {
-              ECR_REPOSITORY: $ECR_REGISTRY/$ECR_REPOSITORY,
-              IMAGE_TAG: $NEW_TAG_V
+              ECR_REPOSITORY: "${{ steps.login-ecr.outputs.registry }}/${{ vars.DEV_ECR_REPOSITORY }}",
+              IMAGE_TAG: ${{ needs.tag.outputs.new_tag }}
             }
