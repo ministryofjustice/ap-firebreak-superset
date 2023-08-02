@@ -175,10 +175,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-        - name: Upgrade the Helm chart
+      - name: Upgrade the Helm chart
         env:
           KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-          NEW_TAG_V: ${{ needs.build-push-dev.outputs.new_tag }}
         run: |
           helm upgrade --install --wait --timeout 10m0s --namespace $KUBE_NAMESPACE $KUBE_NAMESPACE ./helm_deploy/${{ github.event.repository.name }} \
           --set image.tag="${{ needs.tag.outputs.new_tag }}" \
