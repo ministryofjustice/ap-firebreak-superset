@@ -9,10 +9,100 @@ on:
 permissions: {}
 concurrency: dev
 
+
 jobs:
-  deploy:
+  check-for-build:
     runs-on: ubuntu-latest
     environment: dev
+    outputs:
+      status: ${{ steps.filter.conclusion }}
+    steps:
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            dockerfile:
+              - 'Dockerfile'
+
+  tag:
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: write # This is required for actions/checkout
+    outputs:
+      new_tag: ${{ steps.set-version-tag-output.outputs.new_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.62.0
+        id: bump-id
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+          PRERELEASE: true
+          PRERELEASE_SUFFIX: dev
+
+      - name: Set Version tag output
+        id: set-version-tag-output
+        run: echo "new_tag=${{ steps.bump-id.outputs.new_tag }}" >> $GITHUB_OUTPUT
+
+      #   - name: Get file changes
+      #     id: get-file-changes
+      #     uses: trilom/file-changes-action@v1.2.3
+      #     with:
+      #       githubToken: ${{ secrets.GITHUB_TOKEN }}
+      #       plaintext: true
+
+      #   - name: Echo file changes
+      #     id: echo-file-changes
+      #     run: |
+      #       echo Changed files: ${{ steps.get-file-changes.outputs.files }}
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: [check-for-build, tag]
+    if: needs.check-for-build.outputs.status == 'success'
+    steps:
+      - name: Build image if Dockerfile changed
+        id: build-push-image
+        env:
+          NEW_TAG_V: ${{ needs.tag.outputs.new_tag }}
+        shell: bash
+        run: |
+          docker build . -t working_image:$NEW_TAG_V
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.DEV_ECR_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.DEV_ECR_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.DEV_ECR_REPOSITORY }}
+          NEW_TAG_V: ${{ steps.set-version-tag-output.outputs.new_tag }}
+        shell: bash
+        run: |
+          docker tag working_image:$NEW_TAG_V $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG_V
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG_V
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: write # This is required for actions/checkout
+      id-token: write # This is required for requesting the JWT
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -59,15 +149,15 @@ jobs:
           cd helm_deploy/${{ github.event.repository.name }}
           helm dependency build
 
-    #   - name: Get AWS Secrets
-    #     id: get_aws_secrets
-    #     uses: aws-actions/aws-secretsmanager-get-secrets@022e8919774ecb75e8e375656d7b1898936ab878 # v1.0.4
-    #     with:
-    #       secret-ids: |
-    #         azure_client_id
-    #         azure_secret
-    #         azure_tenant_id
-    #         azure_app_id
+      #   - name: Get AWS Secrets
+      #     id: get_aws_secrets
+      #     uses: aws-actions/aws-secretsmanager-get-secrets@022e8919774ecb75e8e375656d7b1898936ab878 # v1.0.4
+      #     with:
+      #       secret-ids: |
+      #         azure_client_id
+      #         azure_secret
+      #         azure_tenant_id
+      #         azure_app_id
 
       - name: Deploy image to K8 ${{ github.event.repository.name }} namespace
         id: deploy-image
