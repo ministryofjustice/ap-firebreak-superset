@@ -188,5 +188,5 @@ jobs:
           namespace: ${{ secrets.KUBE_NAMESPACE }}
           values: |
             image:
-              repository: $ECR_REPOSITORY
-              tag: $IMAGE_TAG
+              repository: ${{ ECR_REPOSITORY }}
+              tag: ${{ IMAGE_TAG }}
