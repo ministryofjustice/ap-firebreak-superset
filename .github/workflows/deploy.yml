@@ -71,7 +71,10 @@ jobs:
     needs: [check-for-build, tag]
     if: needs.check-for-build.outputs.status == 'success'
     steps:
-      - name: Build image if Dockerfile changed
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build image
         id: build-push-image
         env:
           NEW_TAG_V: ${{ needs.tag.outputs.new_tag }}
