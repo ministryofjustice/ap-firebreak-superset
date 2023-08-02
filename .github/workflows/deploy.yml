@@ -9,7 +9,6 @@ on:
 permissions: {}
 concurrency: dev
 
-
 jobs:
   check-for-build:
     runs-on: ubuntu-latest
