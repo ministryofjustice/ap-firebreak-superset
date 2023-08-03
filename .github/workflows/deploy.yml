@@ -105,7 +105,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$NEW_TAG
 
   deploy:
-    needs: build-and-push
+    needs: [build-and-push, tag]
     runs-on: ubuntu-latest
     environment: dev
     permissions:
