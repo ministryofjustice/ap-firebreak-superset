@@ -20,7 +20,7 @@
 runAsUser: 31337
 
 # -- Specify service account name to be used
-serviceAccountName: ~
+serviceAccountName: analytics-hq-dev
 serviceAccount:
   # -- Create custom service account for Superset. If create: true and serviceAccountName is not provided, `superset.fullname` will be used.
   create: false
