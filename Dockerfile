@@ -6,4 +6,6 @@ RUN pip install pyathena[pandas] \
     PyAthenaJDBC \
     authlib
 
+RUN echo ""
+
 USER superset
